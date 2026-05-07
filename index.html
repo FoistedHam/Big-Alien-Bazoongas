@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BIG ALIEN BAZOONGAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a0a2e;
+    --panel: #2d1b4e;
+    --panel-light: #4a2d7a;
+    --border: #c14a8f;
+    --border-bright: #ff7ac1;
+    --text: #ffd4f0;
+    --text-bright: #fff;
+    --green: #5dff8f;
+    --yellow: #ffd93d;
+    --orange: #ff8c42;
+    --red: #ff3860;
+    --cyan: #5dd9ff;
+    --magenta: #ff5dcb;
+    --hotpink: #ff3399;
+    --shadow: #0a0312;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; image-rendering: pixelated; }
+  html, body {
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: 'VT323', monospace;
+    color: var(--text);
+    user-select: none;
+  }
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(ellipse at center, #1a0a2e 0%, #000 100%);
+  }
+  #game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 1280px;
+    max-height: 800px;
+    background: var(--bg);
+    border: 4px solid var(--border);
+    box-shadow:
+      0 0 0 4px var(--shadow),
+      0 0 40px rgba(255, 122, 193, 0.4),
+      inset 0 0 60px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  #game::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.15) 0px,
+      rgba(0,0,0,0.15) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index: 1000;
+    mix-blend-mode: multiply;
+  }
+  #game::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.4) 100%);
+    z-index: 999;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0; left: 0;
+  }
+  .panel {
+    position: absolute;
+    background: var(--panel);
+    border: 2px solid var(--border);
+    box-shadow:
+      inset -2px -2px 0 var(--shadow),
+      inset 2px 2px 0 var(--border-bright),
+      0 0 0 2px var(--shadow);
+    padding: 8px 10px;
+    z-index: 10;
+  }
+  .panel-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--yellow);
+    text-shadow: 1px 1px 0 var(--shadow);
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+  }
+  #hud-top { top: 8px; left: 8px; min-width: 220px; }
+  #hud-controls { top: 8px; right: 8px; min-width: 180px; }
+  #hud-fuel { bottom: 8px; left: 8px; min-width: 280px; }
+  #hud-status { bottom: 8px; right: 8px; min-width: 200px; text-align: right; }
+  .stat {
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--text);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .stat .label { color: var(--cyan); }
+  .stat .val { color: var(--text-bright); font-weight: bold; }
+  .stat .val.warn { color: var(--orange); }
+  .stat .val.crit { color: var(--red); animation: blink 0.5s infinite; }
+  .stat .val.good { color: var(--green); }
+  @keyframes blink { 50% { opacity: 0.3; } }
+  .bar {
+    height: 14px;
+    background: var(--shadow);
+    border: 1px solid var(--border);
+    position: relative;
+    margin-top: 4px;
+  }
+  .bar-fill {
+    height: 100%;
+    transition: width 0.1s;
+    background: linear-gradient(90deg, var(--green) 0%, var(--yellow) 70%, var(--red) 100%);
+  }
+  .bar-fill.fuel { background: linear-gradient(90deg, var(--orange), var(--yellow)); }
+  .bar-fill.throttle { background: linear-gradient(90deg, var(--cyan), var(--green)); }
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    background: var(--panel-light);
+    color: var(--text-bright);
+    border: 2px solid var(--border-bright);
+    box-shadow:
+      inset -2px -2px 0 var(--shadow),
+      inset 2px 2px 0 rgba(255,255,255,0.2);
+    padding: 6px 10px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 0 var(--shadow);
+  }
+  .btn:hover { background: var(--border); }
+  .btn:active {
+    box-shadow:
+      inset 2px 2px 0 var(--shadow),
+      inset -2px -2px 0 rgba(255,255,255,0.1);
+    transform: translate(1px, 1px);
+  }
+  .btn.primary { background: var(--hotpink); color: #fff; border-color: #fff; }
+  .btn.primary:hover { background: #ff66bb; }
+  .btn.danger { background: var(--red); color: var(--text-bright); border-color: #fff; }
+  .key-hint {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--shadow);
+    border: 1px solid var(--border-bright);
+    color: var(--yellow);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    margin-right: 4px;
+  }
+  #title-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(255, 93, 203, 0.25) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 60%, rgba(93, 217, 255, 0.2) 0%, transparent 50%),
+      var(--bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+  }
+  #title-screen.hidden { display: none; }
+  .game-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 42px;
+    color: var(--yellow);
+    text-align: center;
+    line-height: 1.4;
+    text-shadow:
+      4px 4px 0 var(--hotpink),
+      8px 8px 0 var(--shadow);
+    animation: titlePulse 2s ease-in-out infinite;
+  }
+  @keyframes titlePulse {
+    0%, 100% { transform: scale(1) rotate(-1deg); }
+    50% { transform: scale(1.03) rotate(1deg); }
+  }
+  .game-subtitle {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    text-shadow: 2px 2px 0 var(--shadow);
+    letter-spacing: 3px;
+    text-align: center;
+  }
+  .tagline {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: var(--magenta);
+    text-align: center;
+    font-style: italic;
+    margin-top: -10px;
+  }
+  .menu-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .menu-options .btn {
+    font-size: 14px;
+    padding: 14px 30px;
+    min-width: 320px;
+  }
+  .credits {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--text);
+    margin-top: 20px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  .credits .blink { animation: blink 1s infinite; color: var(--yellow); }
+  #builder {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    background: linear-gradient(180deg, #1a0a2e 0%, #2d1b4e 100%);
+    flex-direction: column;
+  }
+  #builder.active { display: flex; }
+  #builder-header {
+    height: 50px;
+    background: var(--panel);
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+  }
+  #builder-header h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    color: var(--yellow);
+    flex: 1;
+  }
+  #builder-main { flex: 1; display: flex; }
+  #parts-panel {
+    width: 220px;
+    background: var(--panel);
+    border-right: 2px solid var(--border);
+    padding: 10px;
+    overflow-y: auto;
+  }
+  #parts-panel::-webkit-scrollbar { width: 8px; }
+  #parts-panel::-webkit-scrollbar-track { background: var(--shadow); }
+  #parts-panel::-webkit-scrollbar-thumb { background: var(--border); }
+  .part-card {
+    background: var(--panel-light);
+    border: 2px solid var(--border);
+    padding: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .part-card:hover { border-color: var(--yellow); background: var(--border); }
+  .part-card.selected { border-color: var(--green); background: var(--border); }
+  .part-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--shadow);
+    border: 1px solid var(--border-bright);
+    flex-shrink: 0;
+  }
+  .part-info { font-family: 'VT323', monospace; font-size: 14px; line-height: 1.2; }
+  .part-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--text-bright);
+    margin-bottom: 3px;
+  }
+  .part-stat { color: var(--cyan); font-size: 12px; }
+  #build-area {
+    flex: 1;
+    position: relative;
+    background:
+      linear-gradient(0deg, transparent 49.5%, rgba(255, 122, 193, 0.15) 49.5%, rgba(255, 122, 193, 0.15) 50.5%, transparent 50.5%),
+      linear-gradient(90deg, transparent 49.5%, rgba(255, 122, 193, 0.15) 49.5%, rgba(255, 122, 193, 0.15) 50.5%, transparent 50.5%),
+      linear-gradient(180deg, #2d1b4e 0%, #1a0a2e 100%);
+    overflow: hidden;
+  }
+  #build-canvas { position: absolute; inset: 0; }
+  #builder-stats {
+    width: 220px;
+    background: var(--panel);
+    border-left: 2px solid var(--border);
+    padding: 10px;
+  }
+  #message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--panel);
+    border: 2px solid var(--yellow);
+    padding: 20px 40px;
+    z-index: 200;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--yellow);
+    text-align: center;
+    line-height: 1.8;
+    display: none;
+    box-shadow: 0 0 0 4px var(--shadow), 0 0 30px rgba(255, 217, 61, 0.5);
+    max-width: 600px;
+  }
+  #message.show { display: block; animation: messageIn 0.3s ease-out; }
+  @keyframes messageIn {
+    from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  .message-sub { font-size: 10px; color: var(--text); margin-top: 10px; }
+  #pause-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 150;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+  #pause-overlay.active { display: flex; }
+  #minimap {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 80px;
+    background: var(--panel);
+    border: 2px solid var(--border);
+    box-shadow:
+      inset -2px -2px 0 var(--shadow),
+      inset 2px 2px 0 var(--border-bright),
+      0 0 0 2px var(--shadow);
+    z-index: 10;
+    overflow: hidden;
+  }
+  #minimap-canvas { width: 100%; height: 100%; }
+  .minimap-label {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--yellow);
+    text-shadow: 1px 1px 0 var(--shadow);
+    z-index: 2;
+  }
+  #achievement {
+    position: absolute;
+    top: 100px;
+    right: -350px;
+    background: var(--panel);
+    border: 2px solid var(--hotpink);
+    padding: 12px 16px;
+    z-index: 60;
+    transition: right 0.5s ease-out;
+    box-shadow: 0 0 0 2px var(--shadow), 0 0 20px rgba(255, 51, 153, 0.5);
+    min-width: 280px;
+  }
+  #achievement.show { right: 16px; }
+  .achievement-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--hotpink);
+    margin-bottom: 4px;
+  }
+  .achievement-text { font-size: 14px; color: var(--text-bright); }
+  .helptext { font-size: 13px; color: var(--text); line-height: 1.4; }
+  /* Victory screen */
+  #victory {
+    position: absolute;
+    inset: 0;
+    z-index: 300;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(ellipse at center, rgba(255, 51, 153, 0.3) 0%, rgba(0,0,0,0.9) 70%);
+    gap: 20px;
+  }
+  #victory.show { display: flex; animation: messageIn 0.6s ease-out; }
+  .victory-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 48px;
+    color: var(--yellow);
+    text-shadow: 4px 4px 0 var(--hotpink), 8px 8px 0 var(--shadow);
+    animation: titlePulse 1s ease-in-out infinite;
+    text-align: center;
+  }
+  .victory-text {
+    font-family: 'VT323', monospace;
+    font-size: 28px;
+    color: var(--cyan);
+    text-align: center;
+    line-height: 1.4;
+    max-width: 600px;
+  }
+  .victory-stats {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 2;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="canvas"></canvas>
+
+  <!-- Title screen -->
+  <div id="title-screen">
+    <div class="game-title">BIG ALIEN<br>BAZOONGAS</div>
+    <div class="tagline">~ a love story across the cosmos ~</div>
+    <div class="game-subtitle">★ ESCAPE EARTH ★ REACH PLANET BAZOON ★</div>
+    <div class="menu-options">
+      <button class="btn primary" onclick="startGame('quick')">▶ QUICK LAUNCH</button>
+      <button class="btn" onclick="startGame('build')">🛠 BUILD ROCKET</button>
+      <button class="btn" onclick="showHowTo()">? HOW TO PLAY</button>
+    </div>
+    <div class="credits">
+      A 16-BIT INTERSTELLAR ROMANCE<br>
+      <span class="blink">▼ PRESS START ▼</span>
+    </div>
+  </div>
+
+  <!-- Builder -->
+  <div id="builder">
+    <div id="builder-header">
+      <h2>★ ROCKET ASSEMBLY BAY ★</h2>
+      <button class="btn" onclick="clearBuild()">CLEAR</button>
+      <button class="btn primary" onclick="launchBuild()">▶ LAUNCH</button>
+      <button class="btn danger" onclick="exitBuilder()">✕ EXIT</button>
+    </div>
+    <div id="builder-main">
+      <div id="parts-panel">
+        <div class="panel-title">PARTS</div>
+        <div id="parts-list"></div>
+      </div>
+      <div id="build-area">
+        <canvas id="build-canvas"></canvas>
+      </div>
+      <div id="builder-stats">
+        <div class="panel-title">VEHICLE STATS</div>
+        <div class="stat"><span class="label">MASS</span><span class="val" id="stat-mass">0 t</span></div>
+        <div class="stat"><span class="label">THRUST</span><span class="val" id="stat-thrust">0 kN</span></div>
+        <div class="stat"><span class="label">FUEL</span><span class="val" id="stat-fuel-cap">0</span></div>
+        <div class="stat"><span class="label">TWR</span><span class="val" id="stat-twr">0.00</span></div>
+        <div class="stat"><span class="label">PARTS</span><span class="val" id="stat-parts">0</span></div>
+        <div style="margin-top: 12px;" class="panel-title">MISSION</div>
+        <div class="helptext">
+          Reach <span style="color:var(--hotpink)">PLANET BAZOON</span> at 8km altitude.<br><br>
+          The aliens are waiting!<br><br>
+          • TWR &gt; 1.2 for liftoff<br>
+          • Right-click to remove<br>
+          • Stack engines for thrust
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flight HUD -->
+  <div class="panel" id="hud-top">
+    <div class="panel-title">▶ TELEMETRY</div>
+    <div class="stat"><span class="label">ALT</span><span class="val" id="hud-alt">0 m</span></div>
+    <div class="stat"><span class="label">VEL</span><span class="val" id="hud-vel">0 m/s</span></div>
+    <div class="stat"><span class="label">APO</span><span class="val" id="hud-apo">- m</span></div>
+    <div class="stat"><span class="label">G</span><span class="val" id="hud-g">1.00 g</span></div>
+    <div class="stat"><span class="label">TIME</span><span class="val" id="hud-time">T+00:00</span></div>
+  </div>
+
+  <div class="panel" id="hud-controls">
+    <div class="panel-title">▶ CONTROLS</div>
+    <div class="helptext">
+      <span class="key-hint">SPC</span> THROTTLE<br>
+      <span class="key-hint">←→</span> STEER<br>
+      <span class="key-hint">Z</span> STAGE<br>
+      <span class="key-hint">X</span> SAS<br>
+      <span class="key-hint">P</span> PAUSE<br>
+      <span class="key-hint">R</span> RESET
+    </div>
+  </div>
+
+  <div class="panel" id="hud-fuel">
+    <div class="panel-title">▶ POWERPLANT</div>
+    <div class="stat"><span class="label">FUEL</span><span class="val" id="hud-fuel">100%</span></div>
+    <div class="bar"><div class="bar-fill fuel" id="bar-fuel" style="width:100%"></div></div>
+    <div class="stat" style="margin-top:6px"><span class="label">THROTTLE</span><span class="val" id="hud-throttle">0%</span></div>
+    <div class="bar"><div class="bar-fill throttle" id="bar-throttle" style="width:0%"></div></div>
+    <div class="stat" style="margin-top:6px"><span class="label">STAGE</span><span class="val" id="hud-stage">1</span></div>
+  </div>
+
+  <div class="panel" id="hud-status">
+    <div class="panel-title">▶ STATUS</div>
+    <div class="stat"><span class="label">SAS</span><span class="val" id="hud-sas">OFF</span></div>
+    <div class="stat"><span class="label">PHASE</span><span class="val" id="hud-phase">PRELAUNCH</span></div>
+    <div class="stat"><span class="label">LOVE</span><span class="val good" id="hud-score">0</span></div>
+  </div>
+
+  <!-- Minimap -->
+  <div id="minimap">
+    <div class="minimap-label">★ MAP</div>
+    <canvas id="minimap-canvas" width="200" height="80"></canvas>
+  </div>
+
+  <!-- Message overlay -->
+  <div id="message">
+    <div id="message-text">HELLO</div>
+    <div class="message-sub" id="message-sub">Press R to reset</div>
+  </div>
+
+  <!-- Achievement popup -->
+  <div id="achievement">
+    <div class="achievement-title">★ ACHIEVEMENT UNLOCKED</div>
+    <div class="achievement-text" id="achievement-text">First Flight!</div>
+  </div>
+
+  <!-- Pause overlay -->
+  <div id="pause-overlay">
+    <div class="game-title" style="font-size: 32px;">⏸ PAUSED</div>
+    <button class="btn primary" onclick="togglePause()">RESUME</button>
+    <button class="btn danger" onclick="goToTitle()">QUIT TO TITLE</button>
+  </div>
+
+  <!-- Victory screen -->
+  <div id="victory">
+    <div class="victory-title">★ ★ ★<br>YOU MADE IT!<br>★ ★ ★</div>
+    <div class="victory-text" id="victory-text">
+      The aliens of Planet Bazoon greet you with open arms.<br>
+      They've been waiting eons for this moment.<br>
+      <span style="color: var(--hotpink)">It's the start of a beautiful interspecies friendship.</span>
+    </div>
+    <div class="victory-stats" id="victory-stats">
+      LOVE EARNED: 0<br>
+      TIME: 00:00<br>
+      MAX ALTITUDE: 0 km
+    </div>
+    <div style="display: flex; gap: 12px;">
+      <button class="btn primary" onclick="resetFlight()">▶ FLY AGAIN</button>
+      <button class="btn" onclick="goToTitle()">TITLE SCREEN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const minimap = document.getElementById('minimap-canvas');
+const mctx = minimap.getContext('2d');
+
+let W = 0, H = 0;
+function resize() {
+  const rect = document.getElementById('game').getBoundingClientRect();
+  W = canvas.width = rect.width;
+  H = canvas.height = rect.height;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// World constants
+const ATMO_HEIGHT = 2200;
+const SPACE_HEIGHT = 4000;
+const BAZOON_HEIGHT = 8000;  // Where Planet Bazoon is
+const G = 0.18;
+
+const game = {
+  state: 'title',
+  rocket: null,
+  camera: { x: 0, y: 0 },
+  time: 0,
+  particles: [],
+  stars: [],
+  clouds: [],
+  hearts: [],
+  achievements: new Set(),
+  score: 0,
+  phase: 'PRELAUNCH',
+  apoapsis: 0,
+  maxAlt: 0,
+  shake: 0,
+  victory: false,
+  // Planet Bazoon position - large alien planet up in space
+  bazoonX: 0,
+  bazoonY: -BAZOON_HEIGHT - 800,
+  bazoonRadius: 500,
+};
+
+// Generate starfield
+for (let i = 0; i < 400; i++) {
+  game.stars.push({
+    x: (Math.random() - 0.5) * 8000,
+    y: -Math.random() * 12000 - 1000,
+    s: Math.random() * 1.5 + 0.5,
+    c: ['#fff', '#cdf', '#fdf', '#ffd', '#dff', '#fcd'][Math.floor(Math.random()*6)],
+    tw: Math.random() * Math.PI * 2,
+  });
+}
+for (let i = 0; i < 40; i++) {
+  game.clouds.push({
+    x: (Math.random() - 0.5) * 6000,
+    y: -200 - Math.random() * 1500,
+    w: 80 + Math.random() * 120,
+    h: 20 + Math.random() * 30,
+  });
+}
+
+// =========================================================
+// PARTS
+// =========================================================
+const PARTS = {
+  cmdpod: {
+    name: 'Love Pod', type: 'command', mass: 0.8, fuel: 0, fuelCap: 0,
+    thrust: 0, w: 24, h: 28, color: '#ff7ac1',
+  },
+  fueltank_s: {
+    name: 'Fuel Tank S', type: 'tank', mass: 0.5, fuelCap: 100,
+    thrust: 0, w: 28, h: 36, color: '#dcdcdc',
+  },
+  fueltank_l: {
+    name: 'Fuel Tank L', type: 'tank', mass: 1.0, fuelCap: 250,
+    thrust: 0, w: 32, h: 56, color: '#dcdcdc',
+  },
+  engine_s: {
+    name: 'Engine "Romeo"', type: 'engine', mass: 0.6, thrust: 80,
+    fuelUse: 0.4, w: 28, h: 24, color: '#888',
+  },
+  engine_l: {
+    name: 'Engine "Casanova"', type: 'engine', mass: 1.4, thrust: 200,
+    fuelUse: 0.9, w: 32, h: 28, color: '#aaa',
+  },
+  booster: {
+    name: 'SRB "Cupid"', type: 'booster', mass: 1.2, fuelCap: 80,
+    thrust: 140, fuelUse: 1.2, w: 18, h: 50, color: '#cc9966',
+  },
+  fin: {
+    name: 'Stabilizer Fin', type: 'fin', mass: 0.1,
+    w: 20, h: 16, color: '#aac',
+  },
+  parachute: {
+    name: 'Parachute', type: 'parachute', mass: 0.2,
+    w: 22, h: 16, color: '#ff8c42',
+  },
+};
+
+function makeQuickRocket() {
+  return {
+    parts: [
+      { type: 'cmdpod',     ox: 0, oy: -60 },
+      { type: 'parachute',  ox: 0, oy: -78 },
+      { type: 'fueltank_l', ox: 0, oy: -22 },
+      { type: 'fueltank_l', ox: 0, oy:  34 },
+      { type: 'engine_l',   ox: 0, oy:  76 },
+      { type: 'fin',        ox: -22, oy: 70 },
+      { type: 'fin',        ox:  22, oy: 70 },
+      { type: 'booster',    ox: -28, oy: 30 },
+      { type: 'booster',    ox:  28, oy: 30 },
+    ]
+  };
+}
+
+function createRocket(design) {
+  const r = {
+    x: 0, y: -100,
+    vx: 0, vy: 0,
+    angle: 0, angVel: 0,
+    parts: design.parts.map(p => ({...p, ...PARTS[p.type], destroyed: false})),
+    fuel: 0, fuelMax: 0, mass: 0, thrust: 0,
+    throttle: 0, sas: false, stage: 1,
+    crashed: false, landed: true,
+    chuteDeployed: false, boostersDetached: false,
+  };
+  for (const p of r.parts) {
+    r.mass += p.mass;
+    r.fuelMax += p.fuelCap || 0;
+    r.thrust += p.thrust || 0;
+  }
+  r.fuel = r.fuelMax;
+  return r;
+}
+
+// =========================================================
+// INPUT
+// =========================================================
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === ' ') e.preventDefault();
+  if (e.key === 'p' || e.key === 'P') togglePause();
+  if (e.key === 'r' || e.key === 'R') resetFlight();
+  if (e.key === 'z' || e.key === 'Z') stage();
+  if (e.key === 'x' || e.key === 'X') toggleSAS();
+});
+window.addEventListener('keyup', e => {
+  keys[e.key] = false;
+  keys[e.key.toLowerCase()] = false;
+});
+
+let throttle = 0;
+function updateInput(dt) {
+  if (!game.rocket || game.state !== 'flight') return;
+  const r = game.rocket;
+  if (keys[' ']) throttle = Math.min(1, throttle + dt * 1.2);
+  else throttle = Math.max(0, throttle - dt * 0.6);
+  r.throttle = throttle;
+  const rotPower = 1.4;
+  if (keys['ArrowLeft'] || keys['a']) r.angVel -= rotPower * dt;
+  if (keys['ArrowRight'] || keys['d']) r.angVel += rotPower * dt;
+  if (keys['ArrowUp'] || keys['w']) r.angVel -= rotPower * dt * 0.5;
+  if (keys['ArrowDown'] || keys['s']) r.angVel += rotPower * dt * 0.5;
+  if (r.sas && !keys['ArrowLeft'] && !keys['ArrowRight'] && !keys['a'] && !keys['d']) {
+    r.angVel *= 0.9;
+  }
+}
+
+// =========================================================
+// PHYSICS
+// =========================================================
+function updatePhysics(dt) {
+  if (game.state !== 'flight' || game.victory) return;
+  const r = game.rocket;
+  if (!r) return;
+
+  const alt = -r.y;
+  const gFactor = Math.max(0.1, 1 - alt / 12000);
+  const gravity = G * gFactor;
+  const atmoDensity = Math.max(0, 1 - alt / ATMO_HEIGHT);
+
+  let thrustForce = 0;
+  if (r.fuel > 0 && r.throttle > 0) {
+    let totalThrust = 0, totalUse = 0;
+    for (const p of r.parts) {
+      if (p.destroyed) continue;
+      if (p.type === 'engine' || p.type === 'booster') {
+        totalThrust += p.thrust;
+        totalUse += p.fuelUse;
+      }
+    }
+    thrustForce = totalThrust * r.throttle;
+    r.fuel -= totalUse * r.throttle * dt;
+    if (r.fuel < 0) r.fuel = 0;
+
+    if (Math.random() < 0.9) {
+      for (const p of r.parts) {
+        if (p.destroyed) continue;
+        if (p.type === 'engine' || p.type === 'booster') {
+          const sin = Math.sin(r.angle), cos = Math.cos(r.angle);
+          const px = r.x + (p.ox * cos - (p.oy + p.h/2) * sin);
+          const py = r.y + (p.ox * sin + (p.oy + p.h/2) * cos);
+          for (let i = 0; i < 2; i++) {
+            const spread = (Math.random() - 0.5) * 0.4;
+            const ang = r.angle + Math.PI + spread;
+            const sp = 80 + Math.random() * 60;
+            game.particles.push({
+              x: px, y: py,
+              vx: Math.sin(ang) * sp + r.vx * 0.5,
+              vy: -Math.cos(ang) * sp + r.vy * 0.5,
+              life: 0.4 + Math.random() * 0.3,
+              maxLife: 0.7,
+              size: 3 + Math.random() * 3,
+              color: Math.random() < 0.3 ? '#ff5dcb' : (Math.random() < 0.5 ? '#ffaa00' : '#ffff66'),
+              type: 'exhaust',
+            });
+          }
+        }
+      }
+      game.shake = Math.min(4, game.shake + r.throttle * 2);
+    }
+  }
+
+  const fuelMass = (r.fuel / Math.max(1, r.fuelMax)) * (r.fuelMax * 0.01);
+  const totalMass = r.mass + fuelMass;
+  const accelMag = thrustForce / totalMass;
+  const ax = Math.sin(r.angle) * accelMag;
+  const ay = -Math.cos(r.angle) * accelMag;
+
+  r.vx += ax * dt;
+  r.vy += ay * dt + gravity * dt * 60;
+
+  const speed = Math.hypot(r.vx, r.vy);
+  if (speed > 0 && atmoDensity > 0) {
+    const drag = 0.0008 * atmoDensity * speed * speed;
+    r.vx -= (r.vx / speed) * drag * dt;
+    r.vy -= (r.vy / speed) * drag * dt;
+    const finCount = r.parts.filter(p => p.type === 'fin' && !p.destroyed).length;
+    if (finCount > 0 && speed > 30) {
+      const progradeAngle = Math.atan2(r.vx, -r.vy);
+      let diff = progradeAngle - r.angle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      r.angVel += diff * atmoDensity * 0.8 * finCount * dt;
+    }
+  }
+
+  r.angle += r.angVel * dt;
+  r.angVel *= 0.99;
+  r.x += r.vx * dt;
+  r.y += r.vy * dt;
+
+  if (r.chuteDeployed) {
+    const chuteDrag = 0.012 * Math.max(0.3, atmoDensity);
+    r.vx *= (1 - chuteDrag * dt * 60);
+    r.vy *= (1 - chuteDrag * dt * 60);
+    if (r.vy > 30) r.vy = 30;
+  }
+
+  if (!r.chuteDeployed && alt < 1500 && alt > 50 && r.vy > 10 && atmoDensity > 0.3) {
+    if (r.parts.some(p => p.type === 'parachute' && !p.destroyed)) {
+      r.chuteDeployed = true;
+      showAchievement('Chute Deployed!');
+    }
+  }
+
+  // Check if reached Planet Bazoon!
+  const dx = r.x - game.bazoonX;
+  const dy = r.y - game.bazoonY;
+  const distToBazoon = Math.hypot(dx, dy);
+  if (distToBazoon < game.bazoonRadius + 50 && !game.victory) {
+    triggerVictory();
+    return;
+  }
+
+  // Ground collision
+  if (alt <= 0) {
+    r.y = 0;
+    const impact = Math.hypot(r.vx, r.vy);
+    if (impact > 25 || Math.abs(r.angle % (Math.PI * 2)) > 0.6) {
+      if (!r.crashed) crashRocket(impact);
+    } else {
+      r.vx *= 0.5;
+      r.vy = 0;
+      r.angVel = 0;
+      r.angle *= 0.9;
+      if (!r.landed && game.maxAlt > 100) {
+        showAchievement('Touchdown! (But the aliens are still waiting...)');
+        game.score += 100;
+      }
+      r.landed = true;
+    }
+  } else {
+    r.landed = false;
+  }
+
+  if (alt > game.apoapsis) game.apoapsis = alt;
+  if (alt > game.maxAlt) game.maxAlt = alt;
+
+  if (r.crashed) game.phase = 'CRASHED';
+  else if (alt < 50 && r.landed) game.phase = r.fuel < 1 ? 'GROUNDED' : 'PRELAUNCH';
+  else if (alt < ATMO_HEIGHT) game.phase = 'ATMOSPHERE';
+  else if (alt < SPACE_HEIGHT) game.phase = 'EDGE OF SPACE';
+  else if (alt < BAZOON_HEIGHT - 1000) game.phase = 'DEEP SPACE';
+  else game.phase = 'APPROACHING BAZOON';
+
+  if (alt > 1000 && !game.achievements.has('liftoff')) {
+    game.achievements.add('liftoff');
+    showAchievement('Liftoff! Reached 1km');
+    game.score += 100;
+  }
+  if (alt > ATMO_HEIGHT && !game.achievements.has('atmo')) {
+    game.achievements.add('atmo');
+    showAchievement('Karman Line! Crossed 2.2km');
+    game.score += 300;
+  }
+  if (alt > SPACE_HEIGHT && !game.achievements.has('space')) {
+    game.achievements.add('space');
+    showAchievement('★ SPACE REACHED ★');
+    game.score += 500;
+  }
+  if (alt > 6000 && !game.achievements.has('high')) {
+    game.achievements.add('high');
+    showAchievement('Bazoon is in sight!');
+    game.score += 700;
+  }
+
+  game.time += dt;
+}
+
+function triggerVictory() {
+  game.victory = true;
+  game.score += 5000;
+  // Spawn lots of hearts
+  for (let i = 0; i < 50; i++) {
+    game.hearts.push({
+      x: game.bazoonX + (Math.random() - 0.5) * 600,
+      y: game.bazoonY + (Math.random() - 0.5) * 400,
+      vx: (Math.random() - 0.5) * 30,
+      vy: -20 - Math.random() * 40,
+      life: 4 + Math.random() * 3,
+      maxLife: 7,
+      size: 8 + Math.random() * 8,
+    });
+  }
+  setTimeout(() => {
+    document.getElementById('victory').classList.add('show');
+    const t = Math.floor(game.time);
+    const m = Math.floor(t / 60).toString().padStart(2, '0');
+    const s = (t % 60).toString().padStart(2, '0');
+    document.getElementById('victory-stats').innerHTML =
+      `LOVE EARNED: ${game.score}<br>TIME: ${m}:${s}<br>MAX ALTITUDE: ${(game.maxAlt/1000).toFixed(2)} KM`;
+  }, 1500);
+}
+
+function crashRocket(impact) {
+  const r = game.rocket;
+  r.crashed = true;
+  game.shake = 30;
+  for (let i = 0; i < 80; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = 50 + Math.random() * 200;
+    game.particles.push({
+      x: r.x, y: r.y,
+      vx: Math.cos(ang) * sp,
+      vy: Math.sin(ang) * sp - 30,
+      life: 1.0 + Math.random(),
+      maxLife: 2.0,
+      size: 4 + Math.random() * 6,
+      color: ['#ff4400', '#ffaa00', '#ffff00', '#ff0000'][Math.floor(Math.random() * 4)],
+      type: 'explosion',
+    });
+  }
+  showMessage('💔 CRASHED!', `The aliens weep. Impact: ${impact.toFixed(0)} m/s. Press R to try again.`);
+  for (const p of r.parts) p.destroyed = true;
+}
+
+function stage() {
+  const r = game.rocket;
+  if (!r || game.state !== 'flight') return;
+  if (!r.boostersDetached) {
+    const boosters = r.parts.filter(p => p.type === 'booster' && !p.destroyed);
+    if (boosters.length > 0) {
+      for (const b of boosters) {
+        const sin = Math.sin(r.angle), cos = Math.cos(r.angle);
+        const px = r.x + (b.ox * cos - b.oy * sin);
+        const py = r.y + (b.ox * sin + b.oy * cos);
+        for (let i = 0; i < 12; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          const sp = 30 + Math.random() * 60;
+          game.particles.push({
+            x: px, y: py,
+            vx: Math.cos(ang) * sp + r.vx,
+            vy: Math.sin(ang) * sp + r.vy,
+            life: 0.8, maxLife: 1.2, size: 4,
+            color: '#cc9966', type: 'debris',
+          });
+        }
+        b.destroyed = true;
+        r.mass -= b.mass;
+        r.thrust -= b.thrust;
+      }
+      r.boostersDetached = true;
+      r.stage = 2;
+      showAchievement('Boosters Separated!');
+      game.score += 50;
+      return;
+    }
+  }
+  if (!r.chuteDeployed && r.parts.some(p => p.type === 'parachute' && !p.destroyed)) {
+    r.chuteDeployed = true;
+    showAchievement('Chute Deployed!');
+    return;
+  }
+  r.stage++;
+}
+
+function toggleSAS() {
+  if (!game.rocket) return;
+  game.rocket.sas = !game.rocket.sas;
+}
+
+// =========================================================
+// PARTICLES & HEARTS
+// =========================================================
+function updateParticles(dt) {
+  for (let i = game.particles.length - 1; i >= 0; i--) {
+    const p = game.particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { game.particles.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.type === 'exhaust') {
+      p.vy += 30 * dt;
+      p.vx *= 0.96;
+    } else if (p.type === 'explosion' || p.type === 'debris') {
+      p.vy += 60 * dt;
+      p.vx *= 0.98;
+    }
+  }
+  for (let i = game.hearts.length - 1; i >= 0; i--) {
+    const h = game.hearts[i];
+    h.life -= dt;
+    if (h.life <= 0) { game.hearts.splice(i, 1); continue; }
+    h.x += h.vx * dt;
+    h.y += h.vy * dt;
+    h.vy += 5 * dt;
+  }
+}
+
+// =========================================================
+// RENDERING
+// =========================================================
+function render() {
+  const r = game.rocket;
+  const alt = r ? -r.y : 0;
+  const atmoT = Math.max(0, Math.min(1, alt / ATMO_HEIGHT));
+  const spaceT = Math.max(0, Math.min(1, (alt - ATMO_HEIGHT) / 2000));
+
+  // Sky has a pinkish/purple tint as you approach Bazoon
+  const bazoonProx = Math.max(0, Math.min(1, (alt - 4000) / 4000));
+  const skyTop = lerpColor([26, 10, 46], [40, 5, 60], spaceT);
+  const skyTopFinal = lerpColor(skyTop, [60, 10, 80], bazoonProx);
+  const skyBot = lerpColor([74, 144, 255], skyTopFinal, atmoT);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, rgb(skyTopFinal));
+  grad.addColorStop(1, rgb(skyBot));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  if (r) {
+    game.camera.x = r.x;
+    game.camera.y = r.y - 50;
+  }
+
+  let sx = 0, sy = 0;
+  if (game.shake > 0) {
+    sx = (Math.random() - 0.5) * game.shake;
+    sy = (Math.random() - 0.5) * game.shake;
+    game.shake *= 0.9;
+    if (game.shake < 0.1) game.shake = 0;
+  }
+
+  ctx.save();
+  ctx.translate(W / 2 + sx, H / 2 + sy);
+  ctx.translate(-game.camera.x, -game.camera.y);
+
+  // Stars
+  const starOpacity = Math.min(1, Math.max(0, (alt - 500) / 2000));
+  if (starOpacity > 0) {
+    for (const s of game.stars) {
+      s.tw += 0.05;
+      const tw = 0.7 + 0.3 * Math.sin(s.tw);
+      ctx.fillStyle = s.c;
+      ctx.globalAlpha = starOpacity * tw;
+      const px = s.x * 0.3 + game.camera.x * 0.7;
+      const py = s.y * 0.5 + game.camera.y * 0.5 - 1500;
+      ctx.fillRect(Math.floor(px), Math.floor(py), s.s, s.s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Planet Bazoon (visible from high altitude)
+  if (alt > 2500) {
+    drawBazoon(alt);
+  }
+
+  // Clouds
+  if (alt < ATMO_HEIGHT * 1.2) {
+    for (const c of game.clouds) {
+      ctx.fillStyle = `rgba(255,220,240,${0.5 * (1 - atmoT)})`;
+      drawPixelCloud(c.x, c.y, c.w, c.h);
+    }
+  }
+
+  drawPlanet();
+
+  // Exhaust particles
+  for (const p of game.particles) {
+    if (p.type !== 'exhaust') continue;
+    const t = p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = t;
+    const sz = p.size * t;
+    ctx.fillRect(Math.floor(p.x - sz/2), Math.floor(p.y - sz/2), Math.floor(sz), Math.floor(sz));
+  }
+  ctx.globalAlpha = 1;
+
+  if (r) drawRocket(r);
+
+  // Other particles
+  for (const p of game.particles) {
+    if (p.type === 'exhaust') continue;
+    const t = p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = t;
+    const sz = p.size * t;
+    ctx.fillRect(Math.floor(p.x - sz/2), Math.floor(p.y - sz/2), Math.floor(sz), Math.floor(sz));
+  }
+  ctx.globalAlpha = 1;
+
+  // Hearts (victory effect)
+  for (const h of game.hearts) {
+    const t = h.life / h.maxLife;
+    ctx.globalAlpha = t;
+    drawHeart(h.x, h.y, h.size);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+  renderMinimap();
+}
+
+function drawBazoon(alt) {
+  // Distance from camera affects visibility
+  const cx = game.bazoonX;
+  const cy = game.bazoonY;
+  const r = game.bazoonRadius;
+
+  // Pinkish-purple alien planet
+  // Base sphere
+  ctx.fillStyle = '#ff66bb';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  // Highlight
+  ctx.fillStyle = '#ff99dd';
+  ctx.beginPath();
+  ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  // Brightest highlight
+  ctx.fillStyle = '#ffccee';
+  ctx.beginPath();
+  ctx.arc(cx - r * 0.4, cy - r * 0.4, r * 0.25, 0, Math.PI * 2);
+  ctx.fill();
+  // Dark side
+  ctx.fillStyle = 'rgba(80, 20, 60, 0.5)';
+  ctx.beginPath();
+  ctx.arc(cx + r * 0.3, cy + r * 0.3, r * 0.7, 0, Math.PI * 2);
+  ctx.fill();
+  // Surface features (continents/oceans)
+  ctx.fillStyle = '#cc4488';
+  for (let i = 0; i < 8; i++) {
+    const ang = i * 0.7 + 1.2;
+    const dist = r * 0.5;
+    const px = cx + Math.cos(ang) * dist;
+    const py = cy + Math.sin(ang) * dist;
+    const sz = r * 0.15 + (i % 3) * r * 0.05;
+    ctx.beginPath();
+    ctx.arc(px, py, sz, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Atmospheric glow
+  const glowGrad = ctx.createRadialGradient(cx, cy, r, cx, cy, r * 1.4);
+  glowGrad.addColorStop(0, 'rgba(255, 153, 221, 0.3)');
+  glowGrad.addColorStop(1, 'rgba(255, 153, 221, 0)');
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // If we're CLOSE to bazoon, draw the alien welcoming committee
+  const dx = (game.rocket?.x || 0) - cx;
+  const dy = (game.rocket?.y || 0) - cy;
+  const dist = Math.hypot(dx, dy);
+  if (dist < r + 400) {
+    drawAlienGreeters(cx, cy, r, dist);
+  }
+}
+
+function drawAlienGreeters(cx, cy, r, dist) {
+  // Draw aliens on the surface waving
+  const closeT = Math.max(0, 1 - (dist - r) / 400);
+  if (closeT <= 0) return;
+
+  // Alien settlement on top of planet (facing rocket)
+  const surfaceY = cy - r;
+  const surfaceX = cx;
+
+  // Some palm-tree-ish alien plants
+  ctx.fillStyle = '#552288';
+  ctx.fillRect(surfaceX - 220, surfaceY - 80, 6, 80);
+  ctx.fillRect(surfaceX + 200, surfaceY - 70, 6, 70);
+  ctx.fillStyle = '#ff66cc';
+  // Frond leaves
+  for (let i = -4; i <= 4; i++) {
+    ctx.fillRect(surfaceX - 220 + i * 6, surfaceY - 95 + Math.abs(i) * 3, 10, 4);
+    ctx.fillRect(surfaceX + 200 + i * 6, surfaceY - 85 + Math.abs(i) * 3, 10, 4);
+  }
+
+  // Draw 3 alien greeters
+  drawAlien(surfaceX - 80, surfaceY, 0, closeT);
+  drawAlien(surfaceX, surfaceY, 1, closeT);
+  drawAlien(surfaceX + 80, surfaceY, 2, closeT);
+
+  // "WELCOME" sign
+  if (closeT > 0.3) {
+    ctx.fillStyle = '#ffd93d';
+    ctx.fillRect(surfaceX - 60, surfaceY - 130, 120, 20);
+    ctx.fillStyle = '#000';
+    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('WELCOME!', surfaceX, surfaceY - 116);
+    ctx.textAlign = 'start';
+  }
+}
+
+function drawAlien(x, y, variant, closeT) {
+  // Pixel-art humanoid alien in bikini, drawn from feet upward
+  // Each variant: slightly different colors
+  const skinColors = ['#7affc1', '#ff7a99', '#7ad9ff'];
+  const skinShade =  ['#3acc8a', '#cc4466', '#3a99cc'];
+  const hairColors = ['#ff3366', '#3366ff', '#9933ff'];
+  const bikiniColors = ['#ffd93d', '#ff5dcb', '#5dd9ff'];
+
+  const skin = skinColors[variant];
+  const shade = skinShade[variant];
+  const hair = hairColors[variant];
+  const bik = bikiniColors[variant];
+
+  // Wave animation
+  const wave = Math.sin(game.time * 4 + variant) * 3;
+
+  const bx = Math.floor(x);
+  const by = Math.floor(y);
+
+  // === Drawn upward from ground ===
+  // Legs (2 stubs)
+  ctx.fillStyle = skin;
+  ctx.fillRect(bx - 7, by - 26, 5, 18);
+  ctx.fillRect(bx + 2, by - 26, 5, 18);
+  ctx.fillStyle = shade;
+  ctx.fillRect(bx - 7, by - 9, 5, 1);
+  ctx.fillRect(bx + 2, by - 9, 5, 1);
+
+  // Bikini bottom
+  ctx.fillStyle = bik;
+  ctx.fillRect(bx - 8, by - 30, 16, 5);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(bx - 8, by - 30, 16, 1);
+
+  // Torso
+  ctx.fillStyle = skin;
+  ctx.fillRect(bx - 7, by - 44, 14, 14);
+  ctx.fillStyle = shade;
+  ctx.fillRect(bx + 5, by - 44, 2, 14);
+
+  // Bikini top - horizontal band across chest
+  ctx.fillStyle = bik;
+  ctx.fillRect(bx - 8, by - 42, 16, 5);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(bx - 8, by - 42, 16, 1);
+  // Strap accents
+  ctx.fillStyle = bik;
+  ctx.fillRect(bx - 7, by - 44, 3, 2);
+  ctx.fillRect(bx + 4, by - 44, 3, 2);
+
+  // Arms (one waving up)
+  ctx.fillStyle = skin;
+  // Left arm down
+  ctx.fillRect(bx - 11, by - 42, 4, 14);
+  // Right arm waving
+  const armOffset = Math.floor(wave / 2);
+  ctx.fillRect(bx + 7, by - 50 + armOffset, 4, 6);
+  ctx.fillRect(bx + 9, by - 56 + armOffset, 4, 8);
+
+  // Neck
+  ctx.fillStyle = skin;
+  ctx.fillRect(bx - 3, by - 47, 6, 3);
+
+  // Head
+  ctx.fillStyle = skin;
+  ctx.fillRect(bx - 8, by - 60, 16, 13);
+  // Head shading
+  ctx.fillStyle = shade;
+  ctx.fillRect(bx + 6, by - 60, 2, 13);
+  ctx.fillRect(bx - 8, by - 48, 16, 1);
+
+  // Hair (big alien hair)
+  ctx.fillStyle = hair;
+  ctx.fillRect(bx - 10, by - 64, 20, 6);
+  ctx.fillRect(bx - 12, by - 60, 4, 8);
+  ctx.fillRect(bx + 8, by - 60, 4, 8);
+  ctx.fillRect(bx - 10, by - 66, 16, 3);
+
+  // Antennae (alien!)
+  ctx.fillStyle = hair;
+  ctx.fillRect(bx - 5, by - 70, 2, 5);
+  ctx.fillRect(bx + 3, by - 70, 2, 5);
+  ctx.fillStyle = '#ffd93d';
+  ctx.fillRect(bx - 5, by - 71, 2, 2);
+  ctx.fillRect(bx + 3, by - 71, 2, 2);
+
+  // Eyes (big anime alien eyes)
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(bx - 6, by - 56, 4, 4);
+  ctx.fillRect(bx + 2, by - 56, 4, 4);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(bx - 5, by - 55, 2, 2);
+  ctx.fillRect(bx + 3, by - 55, 2, 2);
+  // Eye sparkles
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(bx - 5, by - 55, 1, 1);
+  ctx.fillRect(bx + 3, by - 55, 1, 1);
+
+  // Smile
+  ctx.fillStyle = shade;
+  ctx.fillRect(bx - 2, by - 51, 4, 1);
+  ctx.fillRect(bx - 3, by - 52, 1, 1);
+  ctx.fillRect(bx + 2, by - 52, 1, 1);
+
+  // Heart above head
+  if (closeT > 0.5) {
+    const hb = (Math.sin(game.time * 6 + variant) + 1) * 0.5;
+    ctx.globalAlpha = 0.7 + hb * 0.3;
+    drawHeart(bx, by - 80 + Math.sin(game.time * 3 + variant) * 4, 8 + hb * 2);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawHeart(x, y, size) {
+  ctx.fillStyle = '#ff3366';
+  const s = size / 8;
+  // Pixel heart
+  ctx.fillRect(x - 3*s, y - 3*s, 2*s, 2*s);
+  ctx.fillRect(x + s, y - 3*s, 2*s, 2*s);
+  ctx.fillRect(x - 4*s, y - s, 8*s, 2*s);
+  ctx.fillRect(x - 3*s, y + s, 6*s, s);
+  ctx.fillRect(x - 2*s, y + 2*s, 4*s, s);
+  ctx.fillRect(x - s, y + 3*s, 2*s, s);
+  // Highlight
+  ctx.fillStyle = '#ff99bb';
+  ctx.fillRect(x - 2*s, y - 2*s, s, s);
+}
+
+function drawPlanet() {
+  const surfaceY = 0;
+  const groundGrad = ctx.createLinearGradient(0, surfaceY, 0, surfaceY + 800);
+  groundGrad.addColorStop(0, '#3a8c3a');
+  groundGrad.addColorStop(0.05, '#2d6e2d');
+  groundGrad.addColorStop(0.3, '#5d3920');
+  groundGrad.addColorStop(1, '#2d1a10');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(game.camera.x - 5000, surfaceY, 10000, 8000);
+
+  ctx.fillStyle = '#1a4a1a';
+  const offset = game.camera.x * 0.3;
+  for (let i = -5; i < 6; i++) {
+    const mx = i * 400 - (offset % 400);
+    drawPixelMountain(mx, -10, 200 + (i % 3) * 50, 80);
+  }
+
+  drawLaunchPad();
+
+  ctx.fillStyle = '#5dff8f';
+  for (let i = 0; i < 30; i++) {
+    const gx = Math.floor((game.camera.x - 800 + (i * 67) % 1600) / 8) * 8;
+    ctx.fillRect(gx, -2, 3, 3);
+  }
+}
+
+function drawPixelMountain(x, y, w, h) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  for (let i = 0; i <= w; i += 6) {
+    const px = x + i;
+    const t = i / w;
+    let py;
+    if (t < 0.5) py = y - h * (t * 2) + Math.sin(i * 0.3) * 4;
+    else py = y - h * ((1 - t) * 2) + Math.sin(i * 0.3) * 4;
+    ctx.lineTo(px, py);
+  }
+  ctx.lineTo(x + w, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawLaunchPad() {
+  ctx.fillStyle = '#444';
+  ctx.fillRect(-60, -8, 120, 8);
+  ctx.fillStyle = '#666';
+  ctx.fillRect(-60, -8, 120, 2);
+  ctx.fillStyle = '#888';
+  ctx.fillRect(60, -120, 6, 120);
+  ctx.fillRect(54, -120, 18, 4);
+  ctx.fillStyle = '#666';
+  for (let i = 0; i < 4; i++) ctx.fillRect(45, -100 + i * 25, 21, 2);
+  ctx.fillStyle = game.time % 1 < 0.5 ? '#ff3860' : '#550000';
+  ctx.fillRect(63, -116, 4, 4);
+  // Sign at base of pad
+  ctx.fillStyle = '#ff3399';
+  ctx.fillRect(-90, -28, 24, 20);
+  ctx.fillStyle = '#fff';
+  ctx.font = '7px "Press Start 2P", monospace';
+  ctx.fillText('TO', -85, -19);
+  ctx.fillText('★', -82, -11);
+}
+
+function drawPixelCloud(x, y, w, h) {
+  ctx.fillRect(x, y, w, h);
+  ctx.fillRect(x + w * 0.2, y - h * 0.5, w * 0.6, h * 0.5);
+  ctx.fillRect(x - w * 0.1, y + h * 0.2, w * 0.3, h * 0.4);
+  ctx.fillRect(x + w * 0.7, y + h * 0.1, w * 0.4, h * 0.4);
+}
+
+function drawRocket(r) {
+  ctx.save();
+  ctx.translate(r.x, r.y);
+  ctx.rotate(r.angle);
+  const drawOrder = ['fin', 'booster', 'engine', 'tank', 'command', 'parachute'];
+  const sorted = [...r.parts].sort((a, b) => drawOrder.indexOf(a.type) - drawOrder.indexOf(b.type));
+  for (const p of sorted) {
+    if (p.destroyed) continue;
+    drawPart(p, r);
+  }
+  if (r.chuteDeployed) {
+    const chute = r.parts.find(p => p.type === 'parachute' && !p.destroyed);
+    if (chute) {
+      const cx = chute.ox;
+      const cy = chute.oy - 30;
+      ctx.fillStyle = '#ff8c42';
+      ctx.fillRect(cx - 30, cy - 8, 60, 8);
+      ctx.fillRect(cx - 24, cy - 14, 48, 6);
+      ctx.fillRect(cx - 16, cy - 18, 32, 4);
+      ctx.fillStyle = '#ffd93d';
+      ctx.fillRect(cx - 30, cy - 8, 6, 8);
+      ctx.fillRect(cx - 12, cy - 8, 6, 8);
+      ctx.fillRect(cx + 6, cy - 8, 6, 8);
+      ctx.fillRect(cx + 24, cy - 8, 6, 8);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 25, cy);
+      ctx.lineTo(cx - 6, chute.oy);
+      ctx.moveTo(cx + 25, cy);
+      ctx.lineTo(cx + 6, chute.oy);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawPart(p, r) {
+  const x = p.ox - p.w / 2;
+  const y = p.oy - p.h / 2;
+  switch (p.type) {
+    case 'command':
+      ctx.fillStyle = '#ffaadd'; ctx.fillRect(x + 4, y, p.w - 8, 4);
+      ctx.fillStyle = '#ff7ac1'; ctx.fillRect(x + 2, y + 4, p.w - 4, 4);
+      ctx.fillStyle = '#5dd9ff'; ctx.fillRect(x + 6, y + 8, p.w - 12, 6);
+      ctx.fillStyle = '#ff7ac1'; ctx.fillRect(x, y + 14, p.w, p.h - 14);
+      ctx.fillStyle = '#c14a8f'; ctx.fillRect(x, y + 14, 2, p.h - 14); ctx.fillRect(x + p.w - 2, y + 14, 2, p.h - 14);
+      // Heart on the side
+      ctx.fillStyle = '#ff3366';
+      ctx.fillRect(x + p.w/2 - 2, y + 18, 4, 2);
+      ctx.fillRect(x + p.w/2 - 3, y + 19, 6, 2);
+      ctx.fillRect(x + p.w/2 - 2, y + 21, 4, 1);
+      ctx.fillRect(x + p.w/2 - 1, y + 22, 2, 1);
+      ctx.fillStyle = '#f33'; ctx.fillRect(x + p.w / 2 - 2, y - 4, 4, 4);
+      break;
+    case 'tank':
+      ctx.fillStyle = '#eee'; ctx.fillRect(x, y, p.w, p.h);
+      ctx.fillStyle = '#bbb'; ctx.fillRect(x, y, 2, p.h); ctx.fillRect(x + p.w - 2, y, 2, p.h);
+      ctx.fillStyle = '#888'; ctx.fillRect(x, y + 2, p.w, 2); ctx.fillRect(x, y + p.h - 4, p.w, 2);
+      ctx.fillStyle = '#ff3366'; ctx.fillRect(x + 4, y + 8, p.w - 8, 3);
+      ctx.fillStyle = '#fff'; ctx.fillRect(x + p.w / 2 - 2, y + 12, 4, 4);
+      const fuelPct = r.fuel / Math.max(1, r.fuelMax);
+      ctx.fillStyle = '#ffaa00';
+      const fh = Math.floor((p.h - 16) * fuelPct);
+      ctx.fillRect(x + 4, y + p.h - 8 - fh, 2, fh);
+      break;
+    case 'engine':
+      ctx.fillStyle = '#999'; ctx.fillRect(x + 2, y, p.w - 4, 4);
+      ctx.fillStyle = '#777'; ctx.fillRect(x + 4, y + 4, p.w - 8, 6);
+      ctx.fillStyle = '#555'; ctx.fillRect(x, y + 10, p.w, p.h - 14);
+      ctx.fillStyle = '#333'; ctx.fillRect(x + 2, y + p.h - 4, p.w - 4, 4);
+      ctx.fillStyle = '#222'; ctx.fillRect(x, y + 12, p.w, 1); ctx.fillRect(x, y + 18, p.w, 1);
+      break;
+    case 'booster':
+      ctx.fillStyle = '#cc9966'; ctx.fillRect(x, y, p.w, p.h);
+      ctx.fillStyle = '#aa7744'; ctx.fillRect(x, y, 2, p.h); ctx.fillRect(x + p.w - 2, y, 2, p.h);
+      ctx.fillStyle = '#774422'; ctx.fillRect(x, y + 4, p.w, 2); ctx.fillRect(x, y + p.h - 16, p.w, 2);
+      ctx.fillStyle = '#444'; ctx.fillRect(x + 2, y + p.h - 4, p.w - 4, 4);
+      ctx.fillStyle = '#aa7744'; ctx.fillRect(x + 4, y - 4, p.w - 8, 4);
+      break;
+    case 'fin':
+      ctx.fillStyle = '#aac';
+      const isLeft = p.ox < 0;
+      if (isLeft) {
+        ctx.fillRect(x + p.w - 4, y, 4, p.h);
+        ctx.fillRect(x + p.w - 8, y + 4, 4, p.h - 4);
+        ctx.fillRect(x + p.w - 12, y + 8, 4, p.h - 8);
+        ctx.fillRect(x, y + p.h - 4, 8, 4);
+      } else {
+        ctx.fillRect(x, y, 4, p.h);
+        ctx.fillRect(x + 4, y + 4, 4, p.h - 4);
+        ctx.fillRect(x + 8, y + 8, 4, p.h - 8);
+        ctx.fillRect(x + p.w - 8, y + p.h - 4, 8, 4);
+      }
+      break;
+    case 'parachute':
+      ctx.fillStyle = '#ff8c42'; ctx.fillRect(x + 4, y + 4, p.w - 8, p.h - 8);
+      ctx.fillStyle = '#cc6622'; ctx.fillRect(x + 4, y + 4, 2, p.h - 8);
+      ctx.fillStyle = '#ffaa66'; ctx.fillRect(x + 6, y + 6, 4, 4);
+      break;
+  }
+}
+
+function lerpColor(a, b, t) {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+function rgb(c) { return `rgb(${c[0]},${c[1]},${c[2]})`; }
+
+function renderMinimap() {
+  mctx.fillStyle = '#1a0a2e';
+  mctx.fillRect(0, 0, 200, 80);
+  mctx.fillStyle = '#3a8c3a';
+  mctx.fillRect(0, 75, 200, 5);
+  mctx.fillStyle = 'rgba(255, 122, 193, 0.3)';
+  for (let i = 1; i < 5; i++) mctx.fillRect(0, 75 - i * 15, 200, 1);
+  mctx.fillStyle = '#5dd9ff';
+  mctx.fillRect(0, 75 - 20, 200, 1);
+  mctx.fillStyle = '#fff';
+  mctx.fillRect(0, 75 - 40, 200, 1);
+
+  // Bazoon icon at top
+  mctx.fillStyle = '#ff66bb';
+  mctx.fillRect(96, 4, 8, 8);
+  mctx.fillStyle = '#ffccee';
+  mctx.fillRect(96, 4, 3, 3);
+
+  if (game.rocket) {
+    const r = game.rocket;
+    const alt = -r.y;
+    const py = 75 - Math.min(70, (alt / BAZOON_HEIGHT) * 65);
+    const px = 100 + Math.max(-90, Math.min(90, r.x / 50));
+    mctx.fillStyle = '#ff3860';
+    mctx.fillRect(px - 2, py - 2, 4, 4);
+    mctx.fillStyle = '#ffaa00';
+    mctx.fillRect(px - 1, py - 1, 2, 2);
+  }
+  mctx.fillStyle = '#5dd9ff';
+  mctx.font = '7px "Press Start 2P", monospace';
+  mctx.fillText('BAZOON', 65, 19);
+  mctx.fillStyle = '#ff7ac1';
+  mctx.fillText('ATMO', 4, 60);
+}
+
+// =========================================================
+// HUD
+// =========================================================
+function updateHUD() {
+  if (!game.rocket) return;
+  const r = game.rocket;
+  const alt = -r.y;
+  const vel = Math.hypot(r.vx, r.vy);
+  const altText = alt > 1000 ? (alt / 1000).toFixed(2) + ' km' : alt.toFixed(0) + ' m';
+  document.getElementById('hud-alt').textContent = altText;
+  document.getElementById('hud-vel').textContent = vel.toFixed(0) + ' m/s';
+  document.getElementById('hud-apo').textContent =
+    game.apoapsis > 1000 ? (game.apoapsis / 1000).toFixed(2) + ' km' : game.apoapsis.toFixed(0) + ' m';
+  const accelG = r.fuel > 0 && r.throttle > 0 ? (r.thrust * r.throttle) / r.mass / (G * 60) : 1;
+  document.getElementById('hud-g').textContent = accelG.toFixed(2) + ' g';
+  const t = Math.floor(game.time);
+  const m = Math.floor(t / 60).toString().padStart(2, '0');
+  const s = (t % 60).toString().padStart(2, '0');
+  document.getElementById('hud-time').textContent = `T+${m}:${s}`;
+  const fuelPct = r.fuelMax > 0 ? (r.fuel / r.fuelMax) * 100 : 0;
+  const fuelEl = document.getElementById('hud-fuel');
+  fuelEl.textContent = fuelPct.toFixed(0) + '%';
+  fuelEl.className = 'val ' + (fuelPct < 15 ? 'crit' : fuelPct < 35 ? 'warn' : 'good');
+  document.getElementById('bar-fuel').style.width = fuelPct + '%';
+  document.getElementById('hud-throttle').textContent = (r.throttle * 100).toFixed(0) + '%';
+  document.getElementById('bar-throttle').style.width = (r.throttle * 100) + '%';
+  document.getElementById('hud-stage').textContent = r.stage;
+  const sasEl = document.getElementById('hud-sas');
+  sasEl.textContent = r.sas ? 'ON' : 'OFF';
+  sasEl.className = 'val ' + (r.sas ? 'good' : '');
+  document.getElementById('hud-phase').textContent = game.phase;
+  document.getElementById('hud-score').textContent = game.score.toString().padStart(5, '0');
+}
+
+// =========================================================
+// MESSAGES
+// =========================================================
+function showMessage(text, sub = '') {
+  const m = document.getElementById('message');
+  document.getElementById('message-text').textContent = text;
+  document.getElementById('message-sub').textContent = sub;
+  m.classList.add('show');
+}
+function hideMessage() {
+  document.getElementById('message').classList.remove('show');
+}
+
+let achievementTimeout = null;
+function showAchievement(text) {
+  const a = document.getElementById('achievement');
+  document.getElementById('achievement-text').textContent = text;
+  a.classList.add('show');
+  if (achievementTimeout) clearTimeout(achievementTimeout);
+  achievementTimeout = setTimeout(() => a.classList.remove('show'), 3000);
+}
+
+// =========================================================
+// NAVIGATION
+// =========================================================
+function startGame(mode) {
+  document.getElementById('title-screen').classList.add('hidden');
+  if (mode === 'quick') {
+    game.rocket = createRocket(makeQuickRocket());
+    game.state = 'flight';
+    resetFlightState();
+  } else if (mode === 'build') {
+    showBuilder();
+  }
+}
+
+function showHowTo() {
+  showMessage('HOW TO PLAY', 'Hold SPACE to throttle ★ ←→ to steer ★ Z to drop boosters ★ X for SAS ★ REACH PLANET BAZOON AT 8KM!');
+  setTimeout(hideMessage, 6000);
+}
+
+function goToTitle() {
+  game.state = 'title';
+  document.getElementById('title-screen').classList.remove('hidden');
+  document.getElementById('builder').classList.remove('active');
+  document.getElementById('pause-overlay').classList.remove('active');
+  document.getElementById('victory').classList.remove('show');
+  game.victory = false;
+  hideMessage();
+}
+
+function resetFlight() {
+  document.getElementById('victory').classList.remove('show');
+  game.victory = false;
+  resetFlightState();
+}
+
+function resetFlightState() {
+  if (!game.rocket && !currentDesign) return;
+  const design = currentDesign || makeQuickRocket();
+  game.rocket = createRocket(design);
+  game.time = 0;
+  game.apoapsis = 0;
+  game.maxAlt = 0;
+  game.particles = [];
+  game.hearts = [];
+  game.shake = 0;
+  game.victory = false;
+  throttle = 0;
+  hideMessage();
+}
+
+let isPaused = false;
+function togglePause() {
+  if (game.state !== 'flight') return;
+  isPaused = !isPaused;
+  document.getElementById('pause-overlay').classList.toggle('active', isPaused);
+}
+
+// =========================================================
+// BUILDER
+// =========================================================
+let currentDesign = null;
+let builderParts = [];
+let selectedPartType = null;
+const builderCanvas = document.getElementById('build-canvas');
+const bctx = builderCanvas.getContext('2d');
+
+function showBuilder() {
+  document.getElementById('builder').classList.add('active');
+  game.state = 'builder';
+  const list = document.getElementById('parts-list');
+  list.innerHTML = '';
+  for (const [id, part] of Object.entries(PARTS)) {
+    const card = document.createElement('div');
+    card.className = 'part-card';
+    card.innerHTML = `
+      <canvas class="part-icon" width="40" height="40" data-id="${id}"></canvas>
+      <div class="part-info">
+        <div class="part-name">${part.name.toUpperCase()}</div>
+        <div class="part-stat">M:${part.mass}t T:${part.thrust||0}kN F:${part.fuelCap||0}</div>
+      </div>
+    `;
+    card.onclick = () => {
+      selectedPartType = id;
+      document.querySelectorAll('.part-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+    };
+    list.appendChild(card);
+  }
+  setTimeout(() => {
+    document.querySelectorAll('.part-icon').forEach(c => {
+      const id = c.dataset.id;
+      const part = PARTS[id];
+      const ictx = c.getContext('2d');
+      ictx.imageSmoothingEnabled = false;
+      ictx.fillStyle = '#0a0312';
+      ictx.fillRect(0, 0, 40, 40);
+      ictx.save();
+      ictx.translate(20, 20);
+      const fakePart = {...part, ox: 0, oy: 0};
+      const s = Math.min(36 / part.w, 36 / part.h, 1);
+      ictx.scale(s, s);
+      drawPartCtx(ictx, fakePart, { fuel: 100, fuelMax: 100 });
+      ictx.restore();
+    });
+  }, 0);
+
+  if (!currentDesign) builderParts = [{ type: 'cmdpod', ox: 0, oy: -60 }];
+  else builderParts = [...currentDesign.parts];
+  resizeBuilder();
+  drawBuilder();
+}
+
+function exitBuilder() {
+  document.getElementById('builder').classList.remove('active');
+  goToTitle();
+}
+
+function clearBuild() {
+  builderParts = [{ type: 'cmdpod', ox: 0, oy: -60 }];
+  drawBuilder();
+}
+
+function launchBuild() {
+  if (builderParts.length === 0) {
+    showAchievement('Need at least a love pod!');
+    return;
+  }
+  if (!builderParts.some(p => PARTS[p.type].thrust > 0)) {
+    showAchievement('Need an engine to launch!');
+    return;
+  }
+  currentDesign = { parts: [...builderParts] };
+  document.getElementById('builder').classList.remove('active');
+  game.rocket = createRocket(currentDesign);
+  game.state = 'flight';
+  resetFlightState();
+}
+
+function resizeBuilder() {
+  const rect = builderCanvas.getBoundingClientRect();
+  builderCanvas.width = rect.width;
+  builderCanvas.height = rect.height;
+}
+
+function drawBuilder() {
+  resizeBuilder();
+  const w = builderCanvas.width, h = builderCanvas.height;
+  bctx.imageSmoothingEnabled = false;
+  bctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h * 0.7;
+  bctx.strokeStyle = 'rgba(255, 122, 193, 0.3)';
+  bctx.lineWidth = 1;
+  bctx.beginPath();
+  bctx.moveTo(cx, 0); bctx.lineTo(cx, h);
+  bctx.moveTo(0, cy); bctx.lineTo(w, cy);
+  bctx.stroke();
+  bctx.fillStyle = '#444'; bctx.fillRect(cx - 80, cy, 160, 6);
+  bctx.fillStyle = '#333'; bctx.fillRect(cx - 80, cy + 6, 160, 4);
+  bctx.save();
+  bctx.translate(cx, cy);
+  const drawOrder = ['fin', 'booster', 'engine', 'tank', 'command', 'parachute'];
+  const sorted = [...builderParts].sort((a, b) => drawOrder.indexOf(PARTS[a.type].type) - drawOrder.indexOf(PARTS[b.type].type));
+  for (const bp of sorted) {
+    const part = { ...PARTS[bp.type], ox: bp.ox, oy: bp.oy };
+    drawPartCtx(bctx, part, { fuel: 100, fuelMax: 100 });
+  }
+  bctx.restore();
+  let mass = 0, thrust = 0, fuel = 0;
+  for (const bp of builderParts) {
+    const p = PARTS[bp.type];
+    mass += p.mass;
+    thrust += p.thrust || 0;
+    fuel += p.fuelCap || 0;
+  }
+  const twr = mass > 0 ? thrust / mass / (G * 60) : 0;
+  document.getElementById('stat-mass').textContent = mass.toFixed(1) + ' t';
+  document.getElementById('stat-thrust').textContent = thrust + ' kN';
+  document.getElementById('stat-fuel-cap').textContent = fuel;
+  document.getElementById('stat-twr').textContent = twr.toFixed(2);
+  document.getElementById('stat-twr').className = 'val ' + (twr > 1.2 ? 'good' : twr > 0.8 ? 'warn' : 'crit');
+  document.getElementById('stat-parts').textContent = builderParts.length;
+}
+
+function drawPartCtx(c, p, r) {
+  const x = p.ox - p.w / 2;
+  const y = p.oy - p.h / 2;
+  switch (p.type) {
+    case 'command':
+      c.fillStyle = '#ffaadd'; c.fillRect(x + 4, y, p.w - 8, 4);
+      c.fillStyle = '#ff7ac1'; c.fillRect(x + 2, y + 4, p.w - 4, 4);
+      c.fillStyle = '#5dd9ff'; c.fillRect(x + 6, y + 8, p.w - 12, 6);
+      c.fillStyle = '#ff7ac1'; c.fillRect(x, y + 14, p.w, p.h - 14);
+      c.fillStyle = '#c14a8f'; c.fillRect(x, y + 14, 2, p.h - 14); c.fillRect(x + p.w - 2, y + 14, 2, p.h - 14);
+      c.fillStyle = '#f33'; c.fillRect(x + p.w / 2 - 2, y - 4, 4, 4);
+      break;
+    case 'tank':
+      c.fillStyle = '#eee'; c.fillRect(x, y, p.w, p.h);
+      c.fillStyle = '#bbb'; c.fillRect(x, y, 2, p.h); c.fillRect(x + p.w - 2, y, 2, p.h);
+      c.fillStyle = '#888'; c.fillRect(x, y + 2, p.w, 2); c.fillRect(x, y + p.h - 4, p.w, 2);
+      c.fillStyle = '#ff3366'; c.fillRect(x + 4, y + 8, p.w - 8, 3);
+      c.fillStyle = '#fff'; c.fillRect(x + p.w / 2 - 2, y + 12, 4, 4);
+      break;
+    case 'engine':
+      c.fillStyle = '#999'; c.fillRect(x + 2, y, p.w - 4, 4);
+      c.fillStyle = '#777'; c.fillRect(x + 4, y + 4, p.w - 8, 6);
+      c.fillStyle = '#555'; c.fillRect(x, y + 10, p.w, p.h - 14);
+      c.fillStyle = '#333'; c.fillRect(x + 2, y + p.h - 4, p.w - 4, 4);
+      c.fillStyle = '#222'; c.fillRect(x, y + 12, p.w, 1); c.fillRect(x, y + 18, p.w, 1);
+      break;
+    case 'booster':
+      c.fillStyle = '#cc9966'; c.fillRect(x, y, p.w, p.h);
+      c.fillStyle = '#aa7744'; c.fillRect(x, y, 2, p.h); c.fillRect(x + p.w - 2, y, 2, p.h);
+      c.fillStyle = '#774422'; c.fillRect(x, y + 4, p.w, 2); c.fillRect(x, y + p.h - 16, p.w, 2);
+      c.fillStyle = '#444'; c.fillRect(x + 2, y + p.h - 4, p.w - 4, 4);
+      c.fillStyle = '#aa7744'; c.fillRect(x + 4, y - 4, p.w - 8, 4);
+      break;
+    case 'fin':
+      c.fillStyle = '#aac';
+      const isLeft = p.ox < 0;
+      if (isLeft) {
+        c.fillRect(x + p.w - 4, y, 4, p.h);
+        c.fillRect(x + p.w - 8, y + 4, 4, p.h - 4);
+        c.fillRect(x + p.w - 12, y + 8, 4, p.h - 8);
+        c.fillRect(x, y + p.h - 4, 8, 4);
+      } else {
+        c.fillRect(x, y, 4, p.h);
+        c.fillRect(x + 4, y + 4, 4, p.h - 4);
+        c.fillRect(x + 8, y + 8, 4, p.h - 8);
+        c.fillRect(x + p.w - 8, y + p.h - 4, 8, 4);
+      }
+      break;
+    case 'parachute':
+      c.fillStyle = '#ff8c42'; c.fillRect(x + 4, y + 4, p.w - 8, p.h - 8);
+      c.fillStyle = '#cc6622'; c.fillRect(x + 4, y + 4, 2, p.h - 8);
+      c.fillStyle = '#ffaa66'; c.fillRect(x + 6, y + 6, 4, 4);
+      break;
+  }
+}
+
+builderCanvas.addEventListener('click', (e) => {
+  if (!selectedPartType) return;
+  const rect = builderCanvas.getBoundingClientRect();
+  const w = builderCanvas.width, h = builderCanvas.height;
+  const cx = w / 2, cy = h * 0.7;
+  const x = e.clientX - rect.left - cx;
+  const y = e.clientY - rect.top - cy;
+  const snapX = Math.round(x / 4) * 4;
+  const snapY = Math.round(y / 4) * 4;
+  builderParts.push({ type: selectedPartType, ox: snapX, oy: snapY });
+  drawBuilder();
+});
+
+builderCanvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const rect = builderCanvas.getBoundingClientRect();
+  const w = builderCanvas.width, h = builderCanvas.height;
+  const cx = w / 2, cy = h * 0.7;
+  const x = e.clientX - rect.left - cx;
+  const y = e.clientY - rect.top - cy;
+  let closest = -1, closestDist = Infinity;
+  for (let i = 0; i < builderParts.length; i++) {
+    const bp = builderParts[i];
+    const dist = Math.hypot(bp.ox - x, bp.oy - y);
+    if (dist < closestDist && dist < 30) {
+      closestDist = dist;
+      closest = i;
+    }
+  }
+  if (closest >= 0) {
+    builderParts.splice(closest, 1);
+    drawBuilder();
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (game.state === 'builder') drawBuilder();
+});
+
+// =========================================================
+// LOOP
+// =========================================================
+let lastTime = 0;
+function loop(t) {
+  const dt = Math.min(0.05, (t - lastTime) / 1000) || 0;
+  lastTime = t;
+  if (!isPaused && game.state === 'flight') {
+    updateInput(dt);
+    updatePhysics(dt);
+    updateParticles(dt);
+    updateHUD();
+  }
+  if (game.state === 'flight' || game.state === 'title') {
+    ctx.imageSmoothingEnabled = false;
+    render();
+  }
+  requestAnimationFrame(loop);
+}
+
+ctx.imageSmoothingEnabled = false;
+mctx.imageSmoothingEnabled = false;
+requestAnimationFrame(loop);
+
+window.startGame = startGame;
+window.showHowTo = showHowTo;
+window.goToTitle = goToTitle;
+window.togglePause = togglePause;
+window.clearBuild = clearBuild;
+window.launchBuild = launchBuild;
+window.exitBuilder = exitBuilder;
+window.resetFlight = resetFlight;
+</script>
+</body>
+</html>
