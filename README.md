@@ -12,9 +12,11 @@ Build a rocket. Escape Earth. Reach **Planet Bazoon** at 8km altitude where the 
 
 - **Mission objective** — reach Planet Bazoon (8km up) for a victory ending
 - **Pixel-art alien greeters** waiting on the surface, waving hello, with hearts and a "WELCOME!" sign
-- **Rocket Builder** — click-to-place parts with live TWR/mass stats
+- **Rocket Builder** — snap-to-attach parts with a ghost preview and live stats
+- **16 parts** with real tradeoffs — command pods, nose cones, four tank sizes, four engines (from the thrifty "Eros" vacuum engine to the monster "Don Juan"), solid boosters, fins, and winglets
+- **Meaningful thrust-vs-mass system** — fuel adds mass, so piling on tanks lowers your Thrust-to-Weight Ratio. A design with TWR &lt; 1 literally can't leave the pad; balance thrust, engines, and fuel to make orbit. Burn-time and honest wet-mass TWR are shown live in the builder
+- **Aerodynamics** — nose cones cut drag, fins and winglets keep you pointed prograde
 - **Quick Launch** — pre-built rocket for instant flight
-- **Real-ish physics** — thrust, gravity falloff, atmospheric drag, aerodynamic fins
 - **Staging** — drop boosters, deploy parachutes
 - **Atmosphere → Space → Bazoon** progression with a sky that shifts from blue to purple to deep space pink
 - **CRT pixel-art aesthetic** — scanlines, chunky fonts, hot-pink retro UI
@@ -74,6 +76,8 @@ Everything's in `index.html`. Some fun knobs:
 
 - **`PARTS` object** — add new rocket components
 - **`BAZOON_HEIGHT`** — how far away Planet Bazoon is (default 8000)
+- **`THRUST_SCALE`** — global thrust tuning; raise it to make every rocket climb faster
+- **`PARTS` object** — add parts or tweak mass/thrust/fuelUse/aero to rebalance the tradeoffs
 - **`drawAlien()` function** — change the alien designs (skin colors, hair, antennae, accessories)
 - **`triggerVictory()`** — customize the victory text and effects
 - **CSS `:root` variables** — change the whole color palette
