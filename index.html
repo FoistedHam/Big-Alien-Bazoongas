@@ -281,8 +281,8 @@
   .part-card:hover { border-color: var(--yellow); background: var(--border); }
   .part-card.selected { border-color: var(--green); background: var(--border); }
   .part-icon {
-    width: 40px;
-    height: 40px;
+    width: 52px;
+    height: 52px;
     background: var(--shadow);
     border: 1px solid var(--border-bright);
     flex-shrink: 0;
@@ -480,8 +480,10 @@
         <div class="helptext">
           Reach <span style="color:var(--hotpink)">PLANET BAZOON</span> at 8km altitude.<br><br>
           The aliens are waiting!<br><br>
+          • Pick a part, then click a <span style="color:var(--green)">green dot</span> to attach<br>
+          • Green outline = OK, red = blocked<br>
+          • Right-click a part to remove<br>
           • TWR &gt; 1.2 for liftoff<br>
-          • Right-click to remove<br>
           • Stack engines for thrust
         </div>
       </div>
@@ -689,7 +691,7 @@ function makeQuickRocket() {
 
 function createRocket(design) {
   const r = {
-    x: 0, y: -100,
+    x: 0, y: 0,
     vx: 0, vy: 0,
     angle: 0, angVel: 0,
     parts: design.parts.map(p => ({...p, ...PARTS[p.type], destroyed: false})),
@@ -704,6 +706,15 @@ function createRocket(design) {
     r.thrust += p.thrust || 0;
   }
   r.fuel = r.fuelMax;
+  // Spawn resting on the launch pad: find the lowest point of the rocket
+  // (largest oy + half-height) and offset so it sits just above y=0.
+  let lowest = 0;
+  for (const p of r.parts) {
+    const bottom = p.oy + p.h / 2;
+    if (bottom > lowest) lowest = bottom;
+  }
+  r.y = -lowest - 2; // origin placed so the bottom edge rests on the pad
+  r.spawnY = r.y;
   return r;
 }
 
@@ -750,7 +761,7 @@ function updatePhysics(dt) {
   const r = game.rocket;
   if (!r) return;
 
-  const alt = -r.y;
+  const alt = (r.spawnY || 0) - r.y;
   const gFactor = Math.max(0.1, 1 - alt / 12000);
   const gravity = G * gFactor;
   const atmoDensity = Math.max(0, 1 - alt / ATMO_HEIGHT);
@@ -851,7 +862,7 @@ function updatePhysics(dt) {
 
   // Ground collision
   if (alt <= 0) {
-    r.y = 0;
+    r.y = r.spawnY || 0;
     const impact = Math.hypot(r.vx, r.vy);
     if (impact > 25 || Math.abs(r.angle % (Math.PI * 2)) > 0.6) {
       if (!r.crashed) crashRocket(impact);
@@ -1029,7 +1040,7 @@ function updateParticles(dt) {
 // =========================================================
 function render() {
   const r = game.rocket;
-  const alt = r ? -r.y : 0;
+  const alt = r ? ((r.spawnY || 0) - r.y) : 0;
   const atmoT = Math.max(0, Math.min(1, alt / ATMO_HEIGHT));
   const spaceT = Math.max(0, Math.min(1, (alt - ATMO_HEIGHT) / 2000));
 
@@ -1551,7 +1562,7 @@ function renderMinimap() {
 
   if (game.rocket) {
     const r = game.rocket;
-    const alt = -r.y;
+    const alt = (r.spawnY || 0) - r.y;
     const py = 75 - Math.min(70, (alt / BAZOON_HEIGHT) * 65);
     const px = 100 + Math.max(-90, Math.min(90, r.x / 50));
     mctx.fillStyle = '#ff3860';
@@ -1572,7 +1583,7 @@ function renderMinimap() {
 function updateHUD() {
   if (!game.rocket) return;
   const r = game.rocket;
-  const alt = -r.y;
+  const alt = (r.spawnY || 0) - r.y;
   const vel = Math.hypot(r.vx, r.vy);
   const altText = alt > 1000 ? (alt / 1000).toFixed(2) + ' km' : alt.toFixed(0) + ' m';
   document.getElementById('hud-alt').textContent = altText;
@@ -1697,7 +1708,7 @@ function showBuilder() {
     const card = document.createElement('div');
     card.className = 'part-card';
     card.innerHTML = `
-      <canvas class="part-icon" width="40" height="40" data-id="${id}"></canvas>
+      <canvas class="part-icon" width="52" height="52" data-id="${id}"></canvas>
       <div class="part-info">
         <div class="part-name">${part.name.toUpperCase()}</div>
         <div class="part-stat">M:${part.mass}t T:${part.thrust||0}kN F:${part.fuelCap||0}</div>
@@ -1717,11 +1728,11 @@ function showBuilder() {
       const ictx = c.getContext('2d');
       ictx.imageSmoothingEnabled = false;
       ictx.fillStyle = '#0a0312';
-      ictx.fillRect(0, 0, 40, 40);
+      ictx.fillRect(0, 0, 52, 52);
       ictx.save();
-      ictx.translate(20, 20);
+      ictx.translate(26, 26);
       const fakePart = {...part, ox: 0, oy: 0};
-      const s = Math.min(36 / part.w, 36 / part.h, 1);
+      const s = Math.min(46 / part.w, 46 / part.h, 1.4);
       ictx.scale(s, s);
       drawPartCtx(ictx, fakePart, { fuel: 100, fuelMax: 100 });
       ictx.restore();
@@ -1788,6 +1799,36 @@ function drawBuilder() {
     const part = { ...PARTS[bp.type], ox: bp.ox, oy: bp.oy };
     drawPartCtx(bctx, part, { fuel: 100, fuelMax: 100 });
   }
+
+  // Attachment-point hints when a part is selected
+  if (selectedPartType && builderParts.length > 0) {
+    bctx.fillStyle = 'rgba(93, 255, 143, 0.5)';
+    for (const bp of builderParts) {
+      const ep = PARTS[bp.type];
+      const pts = [
+        [bp.ox, bp.oy - ep.h / 2],
+        [bp.ox, bp.oy + ep.h / 2],
+        [bp.ox - ep.w / 2, bp.oy],
+        [bp.ox + ep.w / 2, bp.oy],
+      ];
+      for (const [px, py] of pts) {
+        bctx.fillRect(px - 2, py - 2, 4, 4);
+      }
+    }
+  }
+
+  // Ghost preview of the part to be placed
+  if (ghost && selectedPartType) {
+    bctx.globalAlpha = 0.55;
+    const part = { ...PARTS[selectedPartType], ox: ghost.ox, oy: ghost.oy };
+    drawPartCtx(bctx, part, { fuel: 100, fuelMax: 100 });
+    bctx.globalAlpha = 1;
+    // outline: green if valid, red if not
+    bctx.strokeStyle = ghost.valid ? '#5dff8f' : '#ff3860';
+    bctx.lineWidth = 2;
+    bctx.strokeRect(ghost.ox - part.w / 2, ghost.oy - part.h / 2, part.w, part.h);
+  }
+
   bctx.restore();
   let mass = 0, thrust = 0, fuel = 0;
   for (const bp of builderParts) {
@@ -1861,6 +1902,71 @@ function drawPartCtx(c, p, r) {
   }
 }
 
+// --- Builder snapping ---
+// Given a candidate part type and a raw cursor position, find the best
+// attachment: snap the new part so one of its edges meets an edge of an
+// existing part. Returns {ox, oy, valid}.
+function computeSnap(type, rawX, rawY) {
+  const np = PARTS[type];
+  // Default: free placement snapped to 4px grid (used only if nothing near)
+  let best = { ox: Math.round(rawX / 4) * 4, oy: Math.round(rawY / 4) * 4, valid: builderParts.length === 0, dist: Infinity, snapped: false };
+
+  for (const bp of builderParts) {
+    const ep = PARTS[bp.type];
+    // Candidate attachment positions relative to this existing part:
+    // stack on top, below, left, or right (edges touching).
+    const candidates = [
+      { ox: bp.ox,                         oy: bp.oy - ep.h / 2 - np.h / 2, side: 'top' },
+      { ox: bp.ox,                         oy: bp.oy + ep.h / 2 + np.h / 2, side: 'bottom' },
+      { ox: bp.ox - ep.w / 2 - np.w / 2,   oy: bp.oy,                       side: 'left' },
+      { ox: bp.ox + ep.w / 2 + np.w / 2,   oy: bp.oy,                       side: 'right' },
+    ];
+    for (const c of candidates) {
+      const d = Math.hypot(c.ox - rawX, c.oy - rawY);
+      if (d < best.dist && d < 60) {
+        best = { ox: c.ox, oy: c.oy, valid: true, dist: d, snapped: true };
+      }
+    }
+  }
+  return best;
+}
+
+// Check whether a part at (ox,oy) with type would overlap an existing part too much
+function overlapsExisting(type, ox, oy, ignoreIndex = -1) {
+  const np = PARTS[type];
+  for (let i = 0; i < builderParts.length; i++) {
+    if (i === ignoreIndex) continue;
+    const bp = builderParts[i];
+    const ep = PARTS[bp.type];
+    // axis-aligned overlap with a small tolerance so touching edges are OK
+    const tol = 3;
+    const overlapX = Math.abs(ox - bp.ox) < (np.w + ep.w) / 2 - tol;
+    const overlapY = Math.abs(oy - bp.oy) < (np.h + ep.h) / 2 - tol;
+    if (overlapX && overlapY) return true;
+  }
+  return false;
+}
+
+let ghost = null; // {ox, oy, valid}
+
+builderCanvas.addEventListener('mousemove', (e) => {
+  if (!selectedPartType) { ghost = null; return; }
+  const rect = builderCanvas.getBoundingClientRect();
+  const w = builderCanvas.width, h = builderCanvas.height;
+  const cx = w / 2, cy = h * 0.7;
+  const x = e.clientX - rect.left - cx;
+  const y = e.clientY - rect.top - cy;
+  const snap = computeSnap(selectedPartType, x, y);
+  const ok = snap.valid && !overlapsExisting(selectedPartType, snap.ox, snap.oy);
+  ghost = { ox: snap.ox, oy: snap.oy, valid: ok };
+  drawBuilder();
+});
+
+builderCanvas.addEventListener('mouseleave', () => {
+  ghost = null;
+  if (game.state === 'builder') drawBuilder();
+});
+
 builderCanvas.addEventListener('click', (e) => {
   if (!selectedPartType) return;
   const rect = builderCanvas.getBoundingClientRect();
@@ -1868,9 +1974,16 @@ builderCanvas.addEventListener('click', (e) => {
   const cx = w / 2, cy = h * 0.7;
   const x = e.clientX - rect.left - cx;
   const y = e.clientY - rect.top - cy;
-  const snapX = Math.round(x / 4) * 4;
-  const snapY = Math.round(y / 4) * 4;
-  builderParts.push({ type: selectedPartType, ox: snapX, oy: snapY });
+  const snap = computeSnap(selectedPartType, x, y);
+  if (!snap.valid) {
+    showAchievement('Attach parts to the rocket!');
+    return;
+  }
+  if (overlapsExisting(selectedPartType, snap.ox, snap.oy)) {
+    showAchievement('Parts can\'t overlap!');
+    return;
+  }
+  builderParts.push({ type: selectedPartType, ox: snap.ox, oy: snap.oy });
   drawBuilder();
 });
 
